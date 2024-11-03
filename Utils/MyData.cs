@@ -1,4 +1,4 @@
-﻿namespace AutoFish;
+﻿namespace AutoFish.Utils;
 
 public class MyData
 {
@@ -14,8 +14,8 @@ public class MyData
         //玩家开关
         public bool Enabled { get; set; } = false;
 
-        //自动钓鱼开关
-        public bool AutoFish { get; set; } = false;
+        //消费模式开关
+        public bool Mod { get; set; } = false;
 
         //记录时间
         public DateTime LogTime { get; set; }
@@ -25,12 +25,11 @@ public class MyData
 
         public ItemData(string name = "", bool enabled = true, bool auto = true, Dictionary<int, int> DelItem = null!)
         {
-            this.Name = name ?? "";
-            this.Enabled = enabled;
-            this.AutoFish = auto;
-            this.Bait = DelItem;
+            Name = name ?? "";
+            Enabled = enabled;
+            Mod = auto;
+            Bait = DelItem;
         }
     }
-
     #endregion
 }

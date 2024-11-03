@@ -15,26 +15,49 @@ namespace AutoFish
         [JsonProperty("多钩上限", Order = -10)]
         public int HookMax { get; set; } = 5;
 
-        [JsonProperty("鱼饵数量", Order = -9)]
-        public int BaitStack { get; set; } = 10;
-
-        [JsonProperty("自动时长", Order = -8)]
-        public int timer { get; set; } = 24;
-
-        [JsonProperty("广告开关", Order = -7)]
+        [JsonProperty("广告开关", Order = -9)]
         public bool AdvertisementEnabled { get; set; } = true;
 
-        [JsonProperty("广告内容", Order = -6)]
+        [JsonProperty("广告内容", Order = -8)]
         public string Advertisement { get; set; } = $"\n[i:3456][C/F2F2C7:插件开发] [C/BFDFEA:by] [c/00FFFF:羽学] | [c/7CAEDD:少司命][i:3459]";
 
-        [JsonProperty("指定鱼饵", Order = -5)]
-        public int[] BaitType { get; set; } = { 2002, 2675, 2676, 3191, 3194 };
+        [JsonProperty("施加BUFF", Order = -7)]
+        public bool Buff { get; set; } = true;
 
-        [JsonProperty("指定渔获", Order = -4)]
+        [JsonProperty("Buff", Order = -6)]
+        public Dictionary<int, int> BuffID { get; set; } = new Dictionary<int, int>();
+
+        [JsonProperty("消费模式", Order = -5)]
+        public bool ConMod { get; set; } = false;
+
+        [JsonProperty("消费数量", Order = -4)]
+        public int BaitStack { get; set; } = 10;
+
+        [JsonProperty("自动时长", Order = -3)]
+        public int timer { get; set; } = 24;
+
+        [JsonProperty("消费物品", Order = -2)]
+        public List<int> BaitType { get; set; } = new();
+
+        [JsonProperty("指定渔获", Order = -1)]
         public List<int> DoorItems = new();
         #endregion
 
+        #region 预设参数方法
+        public void Ints()
+        {
+            BuffID = new Dictionary<int, int>()
+            {
+                { 80,10 },
+                { 122,240 }
+            };
 
+            BaitType = new List<int> 
+            { 
+                2002, 2675, 2676, 3191, 3194 
+            };
+        } 
+        #endregion
 
         #region 读取与创建配置文件方法
         public static readonly string FilePath = Path.Combine(TShock.SavePath, "自动钓鱼.json");
@@ -50,6 +73,7 @@ namespace AutoFish
             if (!File.Exists(FilePath))
             {
                 var NewConfig = new Configuration();
+                NewConfig.Ints();
                 new Configuration().Write();
                 return NewConfig;
             }

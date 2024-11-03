@@ -1,31 +1,81 @@
-﻿using TShockAPI;
+﻿using System.Text;
+using Terraria;
+using TShockAPI;
+using static MonoMod.InlineRT.MonoModRule;
+using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace AutoFish
 {
     public class Commands
     {
         #region 菜单方法
-        private static void HelpCmd(TSPlayer player)
+        private static void HelpCmd(TSPlayer plr)
         {
-
-            if (player == null)
+            if (plr == null)
             {
                 return;
             }
             else
             {
-                player.SendMessage("【自动钓鱼】[i:3456] 插件开发 [C/F2F2C7:by] [c/00FFFF:羽学]|[c/7CAEDD:少司命][i:3459]\n" +
-                 "/af —— 查看自动钓鱼菜单\n" +
-                 "/af on —— 开启[c/4686D4:自动钓鱼]功能\n" +
-                 "/af off —— 关闭[c/F25055:自动钓鱼]功能", 193, 223, 186);
+                //普通玩家
+                if (!plr.HasPermission("autofish.admin"))
+                {
+                    var mess = new StringBuilder();
+                    mess.AppendFormat($"[i:3455][c/AD89D5:自][c/D68ACA:动][c/DF909A:钓][c/E5A894:鱼][i:3454]");
+
+                    if (AutoFish.Config.AdvertisementEnabled)
+                    {
+                        mess.AppendFormat(AutoFish.Config.Advertisement);
+                    }
+
+                    mess.AppendFormat("\n/af —— 查看自动钓鱼菜单\n" +
+                     "/af on —— 自动钓鱼[c/4686D4:开启]功能\n" +
+                     "/af off —— 自动钓鱼[c/F25055:关闭]功能");
+
+                    if (AutoFish.Config.ConMod)
+                    {
+                        mess.AppendFormat("\n/af list —— 列出消费模式[c/F5F251:指定物品表]");
+                    }
+
+                    plr.SendMessage(mess.ToString(), 193, 223, 186);
+                }
+
+                //管理员
+                else
+                {
+                    var mess = new StringBuilder();
+                    mess.AppendFormat($"[i:3455][c/AD89D5:自][c/D68ACA:动][c/DF909A:钓][c/E5A894:鱼][i:3454]");
+
+                    if (AutoFish.Config.AdvertisementEnabled)
+                    {
+                        mess.AppendFormat(AutoFish.Config.Advertisement);
+                    }
+
+                    mess.AppendFormat("\n/af —— 查看自动钓鱼菜单\n" +
+                     "/af on —— 自动钓鱼[c/4686D4:开启]功能\n" +
+                     "/af off —— 自动钓鱼[c/F25055:关闭]功能\n" +
+                     "/af buff —— 开启丨关闭[c/F6B152:自动钓鱼BUFF]\n" +
+                     "/af more —— 开启丨关闭[c/DB48A7:多线模式]\n" +
+                     "/af mod —— 开启丨关闭[c/50D647:消费模式]");
+
+                    if (AutoFish.Config.ConMod)
+                    {
+                        mess.AppendFormat("\n/af list —— 列出消费[c/F5F251:指定物品表]\n" +
+                        "/af set 数量 —— 设置消费[c/47C2D5:物品数量]要求\n" +
+                        "/af time 数字 —— 设置消费[c/F6B152:自动时长]\n" +
+                        "/af add 或 del 物品名 —— [c/87DF86:添加]|[c/F19092:移除]消费指定物品");
+                    }
+
+                    plr.SendMessage(mess.ToString(), 193, 223, 186);
+                }
             }
         }
         #endregion
 
         public static void Afs(CommandArgs args)
         {
-            var name = args.Player.Name;
-            var data = AutoFish.Data.Items.FirstOrDefault(item => item.Name == name);
+            var plr = args.Player;
+            var data = AutoFish.Data.Items.FirstOrDefault(item => item.Name == plr.Name);
 
             if (!AutoFish.Config.Enabled)
             {
@@ -38,6 +88,7 @@ namespace AutoFish
                 return;
             }
 
+            //消费模式下的剩余时间记录
             var Minutes = AutoFish.Config.timer - (DateTime.Now - data.LogTime).TotalMinutes;
             FormattableString minutes = $"{Minutes:F0}";
 
@@ -49,12 +100,15 @@ namespace AutoFish
                 {
                     args.Player.SendSuccessMessage($"请输入该指令开启→: [c/92C5EC:/af on]");
                 }
-                else
+
+                //开启了消费模式
+                else if (AutoFish.Config.ConMod)
                 {
-                    args.Player.SendMessage($"自动钓鱼[c/46C4D4:剩余时长]为：[c/F3F292:{minutes}]分钟",243,181,145);
+                    args.Player.SendMessage($"自动钓鱼[c/46C4D4:剩余时长]：[c/F3F292:{minutes}]分钟", 243, 181, 145);
                 }
                 return;
             }
+
             if (args.Parameters.Count == 1)
             {
                 if (args.Parameters[0].ToLower() == "on")
@@ -69,6 +123,130 @@ namespace AutoFish
                     data.Enabled = false;
                     args.Player.SendSuccessMessage($"玩家 [{args.Player.Name}] 已[c/92C5EC:禁用]自动钓鱼功能。");
                     return;
+                }
+
+                if (args.Parameters[0].ToLower() == "list" && AutoFish.Config.ConMod)
+                {
+                    args.Player.SendInfoMessage($"[消费模式指定消耗物品表]\n" + string.Join(", ", AutoFish.Config.BaitType.Select(x => TShock.Utils.GetItemById(x).Name + "([c/92C5EC:{0}])".SFormat(x))));
+                    args.Player.SendSuccessMessage($"消费模式的自动时长为：[c/92C5EC:{AutoFish.Config.timer}]分钟");
+                    return;
+                }
+
+                //管理权限
+                if (plr.HasPermission("autofish.admin"))
+                {
+                    if (args.Parameters[0].ToLower() == "more")
+                    {
+                        var isEnabled = AutoFish.Config.MoreHook;
+                        AutoFish.Config.MoreHook = !isEnabled;
+                        var Mess = isEnabled ? "禁用" : "启用";
+                        args.Player.SendSuccessMessage($"玩家 [{args.Player.Name}] 已[c/92C5EC:{Mess}]多线模式");
+                        AutoFish.Config.Write();
+                        return;
+                    }
+
+                    if (args.Parameters[0].ToLower() == "mod")
+                    {
+                        var isEnabled = AutoFish.Config.ConMod;
+                        AutoFish.Config.ConMod = !isEnabled;
+                        var Mess = isEnabled ? "禁用" : "启用";
+                        args.Player.SendSuccessMessage($"玩家 [{args.Player.Name}] 已[c/92C5EC:{Mess}]消费模式");
+                        AutoFish.Config.Write();
+                        return;
+                    }
+
+                    if (args.Parameters[0].ToLower() == "buff")
+                    {
+                        var isEnabled = AutoFish.Config.Buff;
+                        AutoFish.Config.Buff = !isEnabled;
+                        var Mess = isEnabled ? "禁用" : "启用";
+                        args.Player.SendSuccessMessage($"玩家 [{args.Player.Name}] 已[c/92C5EC:{Mess}]自动钓鱼BUFF");
+                        AutoFish.Config.Write();
+                        return;
+                    }
+                }
+            }
+
+            //管理权限
+            if (plr.HasPermission("autofish.admin"))
+            {
+                if (args.Parameters.Count == 2)
+                {
+                    Item item;
+                    var Items = TShock.Utils.GetItemByIdOrName(args.Parameters[1]);
+                    if (Items.Count > 1)
+                    {
+                        args.Player.SendMultipleMatchError(Items.Select(i => i.Name));
+                        return;
+                    }
+
+                    if (Items.Count == 0)
+                    {
+                        args.Player.SendErrorMessage("不存在该物品，\"物品查询\": \"[c/92C5EC:https://terraria.wiki.gg/zh/wiki/Item_IDs]\"");
+                        return;
+                    }
+
+                    else
+                    {
+                        item = Items[0];
+                    }
+
+                    switch (args.Parameters[0].ToLower())
+                    {
+                        case "add":
+                            {
+                                if (AutoFish.Config.BaitType.Contains(item.type))
+                                {
+                                    args.Player.SendErrorMessage("物品 [c/92C5EC:{0}] 已在指定鱼饵表中!", item.Name);
+                                    return;
+                                }
+                                AutoFish.Config.BaitType.Add(item.type);
+                                AutoFish.Config.Write();
+                                args.Player.SendSuccessMessage("已成功将物品添加指定鱼饵表: [c/92C5EC:{0}]!", item.Name);
+                                break;
+                            }
+
+                        case "del":
+                            {
+                                if (!AutoFish.Config.BaitType.Contains(item.type))
+                                {
+                                    args.Player.SendErrorMessage("物品 {0} 不在指定鱼饵表中!", item.Name);
+                                    return;
+                                }
+                                AutoFish.Config.BaitType.Remove(item.type);
+                                AutoFish.Config.Write();
+                                args.Player.SendSuccessMessage("已成功从指定鱼饵表移出物品: [c/92C5EC:{0}]!", item.Name);
+                                break;
+                            }
+
+                        case "set":
+                            {
+                                if (int.TryParse(args.Parameters[1], out var num))
+                                {
+                                    AutoFish.Config.BaitStack = num;
+                                    AutoFish.Config.Write();
+                                    args.Player.SendSuccessMessage("已成功将物品数量要求设置为: [c/92C5EC:{0}] 个!", num);
+                                }
+                                break;
+                            }
+
+                        case "time":
+                            {
+                                if (int.TryParse(args.Parameters[1], out var num))
+                                {
+                                    AutoFish.Config.timer = num;
+                                    AutoFish.Config.Write();
+                                    args.Player.SendSuccessMessage("已成功将自动时长设置为: [c/92C5EC:{0}] 分钟!", num);
+                                }
+                                break;
+                            }
+
+                        default:
+                            {
+                                HelpCmd(args.Player);
+                                break;
+                            }
+                    }
                 }
             }
         }

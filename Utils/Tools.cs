@@ -1,7 +1,7 @@
 ﻿using Terraria;
 using TShockAPI;
 
-namespace AutoFish
+namespace AutoFish.Utils
 {
     internal class Tools
     {
@@ -41,7 +41,7 @@ namespace AutoFish
         #region 判断浮漂跳动
         public static bool BobbersActive(int whoAmI)
         {
-            using (IEnumerator<Projectile> enumerator = Main.projectile.Where((Projectile p) => p.active && p.owner == whoAmI && p.bobber).GetEnumerator())
+            using (IEnumerator<Projectile> enumerator = Main.projectile.Where((p) => p.active && p.owner == whoAmI && p.bobber).GetEnumerator())
             {
                 if (enumerator.MoveNext())
                 {

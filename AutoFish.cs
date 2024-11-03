@@ -15,7 +15,7 @@ public class AutoFish : TerrariaPlugin
     #region 插件信息
     public override string Name => "自动钓鱼";
     public override string Author => "羽学 少司命";
-    public override Version Version => new Version(1, 1, 0);
+    public override Version Version => new Version(1, 2, 0);
     public override string Description => "涡轮增压不蒸鸭";
     #endregion
 
@@ -26,10 +26,11 @@ public class AutoFish : TerrariaPlugin
         LoadConfig();
         GeneralHooks.ReloadEvent += ReloadConfig;
         GetDataHandlers.NewProjectile += ProjectNew!;
+        GetDataHandlers.NewProjectile += BuffUpdate!;
         ServerApi.Hooks.ServerJoin.Register(this, this.OnJoin);
         GetDataHandlers.PlayerUpdate.Register(this.OnPlayerUpdate);
         ServerApi.Hooks.ProjectileAIUpdate.Register(this, ProjectAiUpdate);
-        TShockAPI.Commands.ChatCommands.Add(new Command("autofish", Commands.Afs, "af"));
+        TShockAPI.Commands.ChatCommands.Add(new Command("autofish", Commands.Afs, "af", "autofish"));
     }
 
     protected override void Dispose(bool disposing)
@@ -38,6 +39,7 @@ public class AutoFish : TerrariaPlugin
         {
             GeneralHooks.ReloadEvent -= ReloadConfig;
             GetDataHandlers.NewProjectile -= ProjectNew!;
+            GetDataHandlers.NewProjectile -= BuffUpdate!;
             ServerApi.Hooks.ServerJoin.Deregister(this, this.OnJoin);
             GetDataHandlers.PlayerUpdate.UnRegister(this.OnPlayerUpdate);
             ServerApi.Hooks.ProjectileAIUpdate.Deregister(this, ProjectAiUpdate);
@@ -83,33 +85,236 @@ public class AutoFish : TerrariaPlugin
             Data.Items.Add(new MyData.ItemData()
             {
                 Name = plr.Name,
-                Enabled = false,
-                AutoFish = false,
+                Enabled = true,
+                Mod = false,
                 Bait = new Dictionary<int, int> { { 0, 0 }, }
             });
         }
     }
     #endregion
 
-    #region 鱼饵消耗+规避松露虫方法
-    private static int ClearCount = 0; //需要关闭钓鱼权限的玩家计数
-    private void OnPlayerUpdate(object? sender, GetDataHandlers.PlayerUpdateEventArgs e)
+    #region 触发自动钓鱼方法
+    private void ProjectAiUpdate(ProjectileAiUpdateEventArgs args)
     {
-        var plr = e.Player;
-        if (!Config.Enabled || e == null || plr == null || !plr.IsLoggedIn || !plr.Active || !plr.HasPermission("autofish"))
+        if (args.Projectile.owner is < 0 or > Main.maxPlayers ||
+            !args.Projectile.active ||
+            !args.Projectile.bobber ||
+            !Config.Enabled)
+            return;
+
+        var plr = TShock.Players[args.Projectile.owner];
+        if (plr == null || !plr.Active || !plr.HasPermission("autofish"))
+            return;
+
+        // 从数据表中获取与玩家名字匹配的配置项
+        var list = Data.Items.FirstOrDefault(x => x.Name == plr.Name);
+        // 如果没有找到配置项，或者自动钓鱼功能或启用状态未设置，则返回
+        if (list == null || !list.Enabled)
         {
             return;
         }
 
-        var list = Data.Items.FirstOrDefault(x => x.Name == plr.Name);
+        //开启消费模式
+        if (Config.ConMod)
+        {
+            //多加一个list.Mod来判断玩家是否花费了【指定鱼饵】来换取功能时长
+            if (list.Mod && list.Enabled)
+            {
+                ControlFishing(args, plr,list);
+            }
+        }
+        else
+        {
+            //否则只要打开插件开关就能使用功能
+            if (list.Enabled)
+            {
+                ControlFishing(args, plr,list);
+            }
+        }
+    }
+    #endregion
 
-        if (list == null || !list.Enabled )
+    #region 自动钓鱼核心逻辑
+    private static void ControlFishing(ProjectileAiUpdateEventArgs args, TSPlayer plr, MyData.ItemData list)
+    {
+        // 当鱼漂上钩了物品
+        if (args.Projectile.ai[1] < 0)
+        {
+            args.Projectile.ai[0] = 1.0f; //设置ai[0]为1.0f，用于控制收杆行为
+
+            // 检查并选择消耗饵料
+            plr.TPlayer.ItemCheck_CheckFishingBobber_PickAndConsumeBait(args.Projectile, out var pullTheBobber, out var baitTypeUsed);
+            if (pullTheBobber) // 如果成功拉起鱼漂
+            {
+                // 执行拉起鱼漂的动作
+                plr.TPlayer.ItemCheck_CheckFishingBobber_PullBobber(args.Projectile, baitTypeUsed);
+
+                // 更新玩家背包 使用饵料信息
+                for (var i = 0; i < plr.TPlayer.inventory.Length; i++)
+                {
+                    if (plr.TPlayer.inventory[i].bait > 0 && baitTypeUsed == plr.TPlayer.inventory[i].type)
+                    {
+                        plr.SendData(PacketTypes.PlayerSlot, "", plr.Index, i);
+                    }
+
+                    //避免线程卡死 留一个物品中止循环
+                    if (baitTypeUsed == plr.TPlayer.inventory[i].type && plr.TPlayer.inventory[i].stack <= 1)
+                    {
+                        list.Enabled = false;
+                        plr.SendMessage($"[c/46C2D4:{plr.Name}] 鱼饵不足，已关闭[c/F5F251:自动钓鱼]功能|重新开启:[c/46C2D4:/af on] ", 247, 244, 150);
+                    }
+                }
+
+                // 使用松露虫则把ai[1]设为默认值（也就是钓猪鲨）
+                if (baitTypeUsed == 2673)
+                {
+                    args.Projectile.ai[1] = 0;
+                    plr.SendData(PacketTypes.ProjectileNew, "", args.Projectile.whoAmI);
+                    return;
+                }
+            }
+
+            // 如果配置了自定义物品
+            if (Config.DoorItems.Any())
+            {
+                // 随机选取一个特殊物品作为鱼漂的ai[1]
+                args.Projectile.ai[1] = Convert.ToSingle(Config.DoorItems.OrderByDescending(x => Guid.NewGuid()).First());
+            }
+            else
+            {
+                // 否则进行常规的钓鱼检查
+                do
+                {
+                    args.Projectile.FishingCheck();
+                    args.Projectile.ai[1] = args.Projectile.localAI[1];
+                }
+                while (args.Projectile.ai[1] <= 0); // 确保ai[1]大于0
+
+            }
+            plr.SendData(PacketTypes.ProjectileNew, "", args.Projectile.whoAmI);
+
+            // 创建新的弹幕实例
+            var index = SpawnProjectile.NewProjectile(Main.projectile[args.Projectile.whoAmI].GetProjectileSource_FromThis(),
+                args.Projectile.position, args.Projectile.velocity, args.Projectile.type, 0, 0, args.Projectile.owner, 0, 0, 0);
+
+            plr.SendData(PacketTypes.ProjectileNew, "", index);
+        }
+    }
+    #endregion
+
+    #region 多线钓鱼
+    public void ProjectNew(object sender, GetDataHandlers.NewProjectileEventArgs e)
+    {
+        var plr = e.Player;
+        var guid = Guid.NewGuid().ToString();
+        var HookCount = Main.projectile.Count(p => p.active && p.owner == e.Owner && p.bobber); // 浮漂计数
+
+        if (plr == null ||
+            !plr.Active ||
+            !plr.IsLoggedIn ||
+            !Config.Enabled ||
+            !Config.MoreHook ||
+            !plr.HasPermission("autofish") ||
+            HookCount > Config.HookMax - 1)
+            return;
+
+        // 从数据表中获取与玩家名字匹配的配置项
+        var list = Data.Items.FirstOrDefault(x => x.Name == plr.Name);
+        // 如果没有找到配置项，或者自动钓鱼功能或启用状态未设置，则返回
+        if (list == null || !list.Enabled)
+        {
+            return;
+        }
+
+        //开启消费模式
+        if (Config.ConMod)
+        {
+            //玩家的自动钓鱼开关
+            if (list.Mod && list.Enabled)
+            {
+                // 检查是否上钩
+                if (Tools.BobbersActive(e.Owner))
+                {
+                    //构建新弹幕
+                    var index = SpawnProjectile.NewProjectile(Main.projectile[e.Index].GetProjectileSource_FromThis(),
+                        e.Position, e.Velocity, e.Type, (int)e.Damage, e.Knockback, e.Owner, 0, 0, 0, -1, guid);
+
+                    plr.SendData(PacketTypes.ProjectileNew, "", index);
+
+                    // 更新多线计数
+                    HookCount++;
+                }
+            }
+        }
+
+        else //正常模式下多线
+        {
+            if (list.Enabled)
+            {
+                if (Tools.BobbersActive(e.Owner))
+                {
+                    var index = SpawnProjectile.NewProjectile(Main.projectile[e.Index].GetProjectileSource_FromThis(),
+                        e.Position, e.Velocity, e.Type, (int)e.Damage, e.Knockback, e.Owner, 0, 0, 0, -1, guid);
+
+                    plr.SendData(PacketTypes.ProjectileNew, "", index);
+
+                    HookCount++;
+                }
+            }
+        }
+    }
+    #endregion
+
+    #region Buff更新方法
+    public void BuffUpdate(object sender, GetDataHandlers.NewProjectileEventArgs e)
+    {
+        var plr = e.Player;
+
+        if (plr == null || !plr.Active || !plr.IsLoggedIn || !Config.Enabled || !Config.Buff || !plr.HasPermission("autofish"))
+        {
+            return;
+        }
+
+        // 从数据表中获取与玩家名字匹配的配置项
+        var list = Data.Items.FirstOrDefault(x => x.Name == plr.Name);
+        if (list == null)
+        {
+            return;
+        }
+
+        //出现鱼钩摆动就给玩家施加buff
+        if (list.Enabled)
+        {
+            if (Tools.BobbersActive(e.Owner))
+            {
+                foreach (var buff in Config.BuffID)
+                {
+                    plr.SetBuff(buff.Key, buff.Value);
+                }
+            }
+        }
+    }
+    #endregion
+
+    #region 消费模式
+    private static int ClearCount = 0; //需要关闭钓鱼权限的玩家计数
+    private void OnPlayerUpdate(object? sender, GetDataHandlers.PlayerUpdateEventArgs e)
+    {
+        var plr = e.Player;
+        if (!Config.Enabled || !Config.ConMod || e == null || plr == null || !plr.IsLoggedIn || !plr.Active || !plr.HasPermission("autofish"))
+        {
+            return;
+        }
+
+        var data = Data.Items.FirstOrDefault(x => x.Name == plr.Name);
+
+        if (data == null || !data.Enabled)
         {
             return;
         }
 
         // 玩家自己插件开关
-        if (list != null)
+        if (data != null)
         {
             bool flag = false;
             int TotalCount = 0; // 用于记录背包中所有鱼饵的总数量
@@ -119,17 +324,11 @@ public class AutoFish : TerrariaPlugin
             {
                 var inv = plr.TPlayer.inventory[i];
 
-                if(inv.type == 2673)
-                {
-                    list.Enabled = false;
-                    return;
-                }
-
-                // 是指定鱼饵 不是松露虫
+                // 是指定鱼饵
                 if (Config.BaitType.Contains(inv.type))
                 {
                     // 添加到玩家自己的字典
-                    Tools.UpDict(list.Bait, inv.type, inv.stack);
+                    Tools.UpDict(data.Bait, inv.type, inv.stack);
 
                     // 累加背包中的鱼饵数量
                     TotalCount += inv.stack;
@@ -144,56 +343,56 @@ public class AutoFish : TerrariaPlugin
                 }
             }
 
-            if (flag && !list.AutoFish)
+            if (flag && !data.Mod)
             {
                 int Remain = Config.BaitStack;
                 var Message = new StringBuilder();
 
-                // 使用 LINQ 遍历并更新库存
-                var consumedItems = list.Bait.ToDictionary(
-                    pair => pair.Key,
-                    pair =>
+                // 遍历并更新库存
+                foreach (var pair in data.Bait.ToList())
+                {
+                    var index = Tools.GetBait(plr, pair.Key); // 获取背包中对应鱼饵的索引
+                    if (index != -1)
                     {
-                        var index = Tools.GetBait(plr, pair.Key);
-                        if (index != -1)
+                        int BaitStack = Math.Min(Remain, plr.TPlayer.inventory[index].stack);// 计算需要消耗的鱼饵数量
+
+                        plr.TPlayer.inventory[index].stack -= BaitStack;// 从背包中扣除鱼饵
+                        plr.SendData(PacketTypes.PlayerSlot, "", plr.Index, PlayerItemSlotID.Inventory0 + index);// 同步背包变化
+
+                        // 更新字典中的数量
+                        data.Bait[pair.Key] -= BaitStack;
+                        if (data.Bait[pair.Key] < 1)
                         {
-                            int BaitStack = Math.Min(Remain, plr.TPlayer.inventory[index].stack);
-
-                            plr.TPlayer.inventory[index].stack -= BaitStack;
-                            plr.SendData(PacketTypes.PlayerSlot, "", plr.Index, PlayerItemSlotID.Inventory0 + index);
-
-                            // 更新字典中的数量
-                            list.Bait[pair.Key] -= BaitStack;
-                            if (list.Bait[pair.Key] < 1)
-                            {
-                                list.Bait.Remove(pair.Key); // 如果数量为0，移除该项
-                            }
-
-                            // 记录消耗的鱼饵
-                            Message.AppendFormat("{0}({1}),", TShock.Utils.GetItemById(pair.Key).Name, BaitStack);
-
-                            // 减少剩余需要消耗的鱼饵数量
-                            Remain -= BaitStack;
-
-                            return BaitStack;
+                            data.Bait.Remove(pair.Key); // 如果数量为0，移除该项
                         }
 
-                        return 0;
-                    });
+                        // 记录消耗的鱼饵
+                        Message.AppendFormat("{0}({1}),", TShock.Utils.GetItemById(pair.Key).Name, BaitStack);
+
+                        // 减少剩余需要消耗的鱼饵数量
+                        Remain -= BaitStack;
+
+                        if (Remain <= 0)
+                        {
+                            break; // 已经消耗完毕，退出循环
+                        }
+                    }
+                }
 
                 if (Remain <= 0)
                 {
                     // 开启自动钓鱼开关
-                    list.AutoFish = true;
+                    data.Mod = true;
 
                     // 记录当前时间
-                    list.LogTime = DateTime.Now;
+                    data.LogTime = DateTime.Now;
 
-                    plr.SendMessage($"[c/46C2D4:{plr.Name}] 已开启[c/F5F251:自动钓鱼]功能,消耗鱼饵:{Message}", 247, 244, 150);
+                    plr.SendMessage($"[c/46C2D4:{plr.Name}] 已开启[c/F5F251:自动钓鱼]功能 消耗物品为:{Message}", 247, 244, 150);
                 }
             }
-
         }
+
+
 
         // 检查是否有玩家的自动钓鱼权限需要关闭
         var Remove = Data.Items.Where(list => list != null && list.LogTime != default &&
@@ -215,7 +414,7 @@ public class AutoFish : TerrariaPlugin
                 if (Minutes >= Config.timer)
                 {
                     ClearCount++;
-                    plr2.AutoFish = false;
+                    plr2.Mod = false;
                     plr2.LogTime = default; // 清空记录时间
                     mess.AppendFormat("[c/A7DDF0:{0}]:[c/74F3C9:{1}分钟], ", plr2.Name, minutes);
                 }
@@ -232,97 +431,6 @@ public class AutoFish : TerrariaPlugin
                 }
                 plr.SendMessage(mess.ToString(), 247, 244, 150);
                 ClearCount = 0;
-            }
-        }
-    }
-    #endregion
-
-    #region 自动钓鱼方法
-    private void ProjectAiUpdate(ProjectileAiUpdateEventArgs args)
-    {
-        if (args.Projectile.owner is < 0 or > Main.maxPlayers ||
-            !args.Projectile.active ||
-            !args.Projectile.bobber ||
-            !Config.Enabled)
-            return;
-
-        var ply = TShock.Players[args.Projectile.owner];
-        if (ply == null || !ply.Active || !ply.HasPermission("autofish"))
-            return;
-
-        var list = Data.Items.FirstOrDefault(x => x.Name == ply.Name);
-        if (list == null || !list.Enabled || !list.AutoFish)
-        {
-            return;
-        }
-
-        //玩家的自动钓鱼开关
-        if (list.AutoFish && list.Enabled)
-        {
-            //上钩物品
-            if (args.Projectile.ai[1] < 0)
-            {
-                args.Projectile.ai[0] = 1.0f;
-                if (Config.DoorItems.Any())
-                {
-                    args.Projectile.ai[1] = Convert.ToSingle(Config.DoorItems.OrderByDescending(x => Guid.NewGuid()).First());
-                }
-                else
-                {
-                    do
-                    {
-                        args.Projectile.FishingCheck();
-                        args.Projectile.ai[1] = args.Projectile.localAI[1];
-                    }
-                    while (args.Projectile.ai[1] <= 0);
-
-                }
-                ply.SendData(PacketTypes.ProjectileNew, "", args.Projectile.whoAmI);
-
-                var index = SpawnProjectile.NewProjectile(Main.projectile[args.Projectile.whoAmI].GetProjectileSource_FromThis(),
-                    args.Projectile.position, args.Projectile.velocity, args.Projectile.type, 0, 0, args.Projectile.owner, 0, 0, 0);
-
-                ply.SendData(PacketTypes.ProjectileNew, "", index);
-            }
-        }
-    }
-    #endregion
-
-    #region 多线钓鱼
-    public void ProjectNew(object sender, GetDataHandlers.NewProjectileEventArgs e)
-    {
-        var ply = e.Player;
-        var guid = Guid.NewGuid().ToString();
-        var HookCount = Main.projectile.Count(p => p.active && p.owner == e.Owner && p.bobber); // 浮漂计数
-
-        if (ply == null ||
-            !ply.Active ||
-            !ply.IsLoggedIn ||
-            !Config.Enabled ||
-            !Config.MoreHook ||
-            !ply.HasPermission("autofish") ||
-            HookCount > Config.HookMax - 1)
-            return;
-
-        var list = Data.Items.FirstOrDefault(x => x.Name == ply.Name);
-        if (list == null || !list.Enabled || !list.AutoFish)
-        {
-            return;
-        }
-
-        //玩家的自动钓鱼开关
-        if (list.AutoFish && list.Enabled)
-        {
-            // 检查浮漂是否上钩
-            if (Tools.BobbersActive(e.Owner))
-            {
-                var index = SpawnProjectile.NewProjectile(Main.projectile[e.Index].GetProjectileSource_FromThis(),
-                    e.Position, e.Velocity, e.Type, (int)e.Damage, e.Knockback, e.Owner, 0, 0, 0, -1, guid);
-
-                ply.SendData(PacketTypes.ProjectileNew, "", index);
-
-                // 更新多线计数
-                HookCount++;
             }
         }
     }
