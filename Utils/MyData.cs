@@ -14,7 +14,7 @@ public class MyData
         //玩家开关
         public bool Enabled { get; set; } = false;
 
-        //消费模式开关
+        //消耗模式开关
         public bool Mod { get; set; } = false;
 
         //记录时间

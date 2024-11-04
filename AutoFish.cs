@@ -115,7 +115,7 @@ public class AutoFish : TerrariaPlugin
             return;
         }
 
-        //开启消费模式
+        //开启消耗模式
         if (Config.ConMod)
         {
             //多加一个list.Mod来判断玩家是否花费了【指定鱼饵】来换取功能时长
@@ -227,7 +227,7 @@ public class AutoFish : TerrariaPlugin
             return;
         }
 
-        //开启消费模式
+        //开启消耗模式
         if (Config.ConMod)
         {
             //玩家的自动钓鱼开关
@@ -297,7 +297,7 @@ public class AutoFish : TerrariaPlugin
     }
     #endregion
 
-    #region 消费模式:消耗物品开启自动钓鱼方法
+    #region 消耗模式:消耗物品开启自动钓鱼方法
     private void OnPlayerUpdate(object? sender, GetDataHandlers.PlayerUpdateEventArgs e)
     {
         var plr = e.Player;
@@ -322,8 +322,11 @@ public class AutoFish : TerrariaPlugin
             //初始化一个消耗值
             var sun = Config.BaitStack;
 
-            // 统计背包中指定鱼饵的总数量
-            int TotalBait = plr.TPlayer.inventory.Sum(inv => Config.BaitType.Contains(inv.type) ? inv.stack : 0);
+            // 统计背包中指定鱼饵的总数量(不包含手上物品)
+            int TotalBait = plr.TPlayer.inventory.Sum(inv => 
+            (Config.BaitType.Contains(inv.type) &&
+            inv.type != plr.TPlayer.inventory[plr.TPlayer.selectedItem].type) ?
+            inv.stack : 0);
 
             // 如果背包中有足够的鱼饵数量 和消耗值相等
             if (TotalBait >= sun)
@@ -333,7 +336,7 @@ public class AutoFish : TerrariaPlugin
                 {
                     var inv = plr.TPlayer.inventory[i];
 
-                    // 是Config里指定的鱼饵,物品数量与消耗值的数量相等
+                    // 是Config里指定的鱼饵,不是手上的物品
                     if (Config.BaitType.Contains(inv.type))
                     {
                         var BaitStack = Math.Min(sun, inv.stack); // 计算需要消耗的鱼饵数量
@@ -373,7 +376,7 @@ public class AutoFish : TerrariaPlugin
     }
     #endregion
 
-    #region 消费模式:过期后关闭自动钓鱼方法
+    #region 消耗模式:过期后关闭自动钓鱼方法
     private static int ClearCount = 0; //需要关闭钓鱼权限的玩家计数
     private static void ExitMod(TSPlayer plr, MyData.ItemData data)
     {

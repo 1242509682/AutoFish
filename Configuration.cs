@@ -27,16 +27,16 @@ namespace AutoFish
         [JsonProperty("Buff", Order = -6)]
         public Dictionary<int, int> BuffID { get; set; } = new Dictionary<int, int>();
 
-        [JsonProperty("消费模式", Order = -5)]
-        public bool ConMod { get; set; } = false;
+        [JsonProperty("消耗模式", Order = -5)]
+        public bool ConMod { get; set; } = true;
 
-        [JsonProperty("消费数量", Order = -4)]
+        [JsonProperty("消耗数量", Order = -4)]
         public int BaitStack { get; set; } = 10;
 
         [JsonProperty("自动时长", Order = -3)]
         public int timer { get; set; } = 24;
 
-        [JsonProperty("消费物品", Order = -2)]
+        [JsonProperty("消耗物品", Order = -2)]
         public List<int> BaitType { get; set; } = new();
 
         [JsonProperty("指定渔获", Order = -1)]

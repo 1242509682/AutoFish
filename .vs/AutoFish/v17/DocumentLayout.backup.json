@@ -28,7 +28,7 @@
               "RelativeDocumentMoniker": "AutoFish.cs",
               "ToolTip": "d:\\\u6E38\u620F\\Terraria\\\u670D\u52A1\u5668\\\u63D2\u4EF6\u6E90\u7801\\\u3010\u81EA\u52A8\u9493\u9C7C\u6E90\u7801\u3011AutoFish v1.2.0\\AutoFish.cs",
               "RelativeToolTip": "AutoFish.cs",
-              "ViewState": "AgIAAFkBAAAAAAAAAADwv2YBAAARAAAAAAAAAA==",
+              "ViewState": "AgIAADgBAAAAAAAAAAAowEQBAAAkAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-04T05:22:09.586Z",
               "EditorCaption": ""
@@ -41,10 +41,14 @@
               "RelativeDocumentMoniker": "Configuration.cs",
               "ToolTip": "d:\\\u6E38\u620F\\Terraria\\\u670D\u52A1\u5668\\\u63D2\u4EF6\u6E90\u7801\\\u3010\u81EA\u52A8\u9493\u9C7C\u6E90\u7801\u3011AutoFish v1.2.0\\Configuration.cs",
               "RelativeToolTip": "Configuration.cs",
-              "ViewState": "AgIAAAoAAAAAAAAAAAAAACMAAAAqAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACQAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-04T04:44:51.404Z",
               "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             }
           ]
         }
