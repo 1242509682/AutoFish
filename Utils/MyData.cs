@@ -17,14 +17,18 @@ public class MyData
         //消耗模式开关
         public bool Mod { get; set; } = false;
 
+        //BUFF开关
+        public bool Buff { get; set; } = false;
+
         //记录时间
         public DateTime LogTime { get; set; }
 
-        public ItemData(string name = "", bool enabled = true, bool mod = true)
+        public ItemData(string name = "", bool enabled = true, bool mod = true, bool buff = true)
         {
             Name = name ?? "";
             Enabled = enabled;
             Mod = mod;
+            Buff = buff;
         }
     }
     #endregion

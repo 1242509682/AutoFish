@@ -21,14 +21,11 @@ namespace AutoFish
         [JsonProperty("广告内容", Order = -8)]
         public string Advertisement { get; set; } = $"\n[i:3456][C/F2F2C7:插件开发] [C/BFDFEA:by] [c/00FFFF:羽学] | [c/7CAEDD:少司命][i:3459]";
 
-        [JsonProperty("施加BUFF", Order = -7)]
-        public bool Buff { get; set; } = true;
-
-        [JsonProperty("Buff", Order = -6)]
+        [JsonProperty("Buff表", Order = -6)]
         public Dictionary<int, int> BuffID { get; set; } = new Dictionary<int, int>();
 
         [JsonProperty("消耗模式", Order = -5)]
-        public bool ConMod { get; set; } = true;
+        public bool ConMod { get; set; } = false;
 
         [JsonProperty("消耗数量", Order = -4)]
         public int BaitStack { get; set; } = 10;
@@ -39,7 +36,7 @@ namespace AutoFish
         [JsonProperty("消耗物品", Order = -2)]
         public List<int> BaitType { get; set; } = new();
 
-        [JsonProperty("指定渔获", Order = -1)]
+        [JsonProperty("额外渔获", Order = -1)]
         public List<int> DoorItems = new();
         #endregion
 
@@ -55,6 +52,11 @@ namespace AutoFish
             BaitType = new List<int> 
             { 
                 2002, 2675, 2676, 3191, 3194 
+            };
+
+            DoorItems = new List<int>
+            {
+                29,3093,4345
             };
         } 
         #endregion

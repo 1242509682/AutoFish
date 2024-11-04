@@ -1,8 +1,6 @@
 ﻿using System.Text;
 using Terraria;
 using TShockAPI;
-using static MonoMod.InlineRT.MonoModRule;
-using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace AutoFish
 {
@@ -21,20 +19,26 @@ namespace AutoFish
                 if (!plr.HasPermission("autofish.admin"))
                 {
                     var mess = new StringBuilder();
-                    mess.AppendFormat($"[i:3455][c/AD89D5:自][c/D68ACA:动][c/DF909A:钓][c/E5A894:鱼][i:3454]");
+                    mess.AppendFormat($"          [i:3455][c/AD89D5:自][c/D68ACA:动][c/DF909A:钓][c/E5A894:鱼][i:3454]");
 
                     if (AutoFish.Config.AdvertisementEnabled)
                     {
                         mess.AppendFormat(AutoFish.Config.Advertisement);
                     }
 
-                    mess.AppendFormat("\n/af —— 查看自动钓鱼菜单\n" +
-                     "/af on —— 自动钓鱼[c/4686D4:开启]功能\n" +
-                     "/af off —— 自动钓鱼[c/F25055:关闭]功能");
+                    mess.AppendFormat("\n/af -- 查看自动钓鱼菜单\n" +
+                     "/af on -- 自动钓鱼[c/4686D4:开启]功能\n" +
+                     "/af off -- 自动钓鱼[c/F25055:关闭]功能\n" +
+                     "/af buff -- 开启丨关闭[c/F6B152:钓鱼BUFF]");
+
+                    if (AutoFish.Config.DoorItems.Any())
+                    {
+                        mess.AppendFormat("\n/af loot -- 查看[c/F25055:额外渔获表]");
+                    }
 
                     if (AutoFish.Config.ConMod)
                     {
-                        mess.AppendFormat("\n/af list —— 列出消耗模式[c/F5F251:指定物品表]");
+                        mess.AppendFormat("\n/af list -- 列出消耗模式[c/F5F251:指定物品表]");
                     }
 
                     plr.SendMessage(mess.ToString(), 193, 223, 186);
@@ -44,26 +48,31 @@ namespace AutoFish
                 else
                 {
                     var mess = new StringBuilder();
-                    mess.AppendFormat($"[i:3455][c/AD89D5:自][c/D68ACA:动][c/DF909A:钓][c/E5A894:鱼][i:3454]");
+                    mess.AppendFormat($"          [i:3455][c/AD89D5:自][c/D68ACA:动][c/DF909A:钓][c/E5A894:鱼][i:3454]");
 
                     if (AutoFish.Config.AdvertisementEnabled)
                     {
                         mess.AppendFormat(AutoFish.Config.Advertisement);
                     }
 
-                    mess.AppendFormat("\n/af —— 查看自动钓鱼菜单\n" +
-                     "/af on —— 自动钓鱼[c/4686D4:开启]功能\n" +
-                     "/af off —— 自动钓鱼[c/F25055:关闭]功能\n" +
-                     "/af buff —— 开启丨关闭[c/F6B152:自动钓鱼BUFF]\n" +
-                     "/af more —— 开启丨关闭[c/DB48A7:多线模式]\n" +
-                     "/af mod —— 开启丨关闭[c/50D647:消耗模式]");
+                    mess.AppendFormat("\n/af on 或 off -- 自动钓鱼[c/4686D4:开启]|[c/F25055:关闭]功能\n" +
+                     "/af buff -- 开启丨关闭[c/F6B152:钓鱼BUFF]\n" +
+                     "/af more -- 开启丨关闭[c/DB48A7:多线模式]\n" +
+                     "/af duo 数字 -- 设置多线的[c/4686D4:钩子数量]\n" +
+                     "/af mod -- 开启丨关闭[c/50D647:消耗模式]");
 
                     if (AutoFish.Config.ConMod)
                     {
-                        mess.AppendFormat("\n/af list —— 列出消耗[c/F5F251:指定物品表]\n" +
-                        "/af set 数量 —— 设置消耗[c/47C2D5:物品数量]要求\n" +
-                        "/af time 数字 —— 设置消耗[c/F6B152:自动时长]\n" +
-                        "/af add 或 del 物品名 —— [c/87DF86:添加]|[c/F19092:移除]消耗指定物品");
+                        mess.AppendFormat("\n/af list -- 列出消耗[c/F5F251:指定物品表]\n" +
+                        "/af set 数量 -- 设置消耗[c/47C2D5:物品数量]要求\n" +
+                        "/af time 数字 -- 设置消耗[c/F6B152:自动时长]\n" +
+                        "/af add 或 del 物品名 -- [c/87DF86:添加]|[c/F25055:移除]消耗指定物品");
+                    }
+
+                    if (AutoFish.Config.DoorItems.Any())
+                    {
+                        mess.AppendFormat("\n/af loot -- 查看[c/F25055:额外渔获表]\n" +
+                            "/af + 或 - 名字 -- 为额外渔获[c/87DF86:添加]|[c/F25055:移除]物品");
                     }
 
                     plr.SendMessage(mess.ToString(), 193, 223, 186);
@@ -124,10 +133,25 @@ namespace AutoFish
                     return;
                 }
 
+                if (args.Parameters[0].ToLower() == "buff")
+                {
+                    var isEnabled = data.Buff;
+                    data.Buff = !isEnabled;
+                    var Mess = isEnabled ? "禁用" : "启用";
+                    args.Player.SendSuccessMessage($"玩家 [{args.Player.Name}] 已[c/92C5EC:{Mess}]自动钓鱼BUFF");
+                    return;
+                }
+
                 if (args.Parameters[0].ToLower() == "list" && AutoFish.Config.ConMod)
                 {
                     args.Player.SendInfoMessage($"[指定消耗物品表]\n" + string.Join(", ", AutoFish.Config.BaitType.Select(x => TShock.Utils.GetItemById(x).Name + "([c/92C5EC:{0}])".SFormat(x))));
                     args.Player.SendSuccessMessage($"兑换规则为：每[c/F5F252:{AutoFish.Config.BaitStack}]个 => [c/92C5EC:{AutoFish.Config.timer}]分钟");
+                    return;
+                }
+
+                if (args.Parameters[0].ToLower() == "loot" && AutoFish.Config.DoorItems.Any())
+                {
+                    args.Player.SendInfoMessage($"[额外渔获表]\n" + string.Join(", ", AutoFish.Config.DoorItems.Select(x => TShock.Utils.GetItemById(x).Name + "([c/92C5EC:{0}])".SFormat(x))));
                     return;
                 }
 
@@ -150,16 +174,6 @@ namespace AutoFish
                         AutoFish.Config.ConMod = !isEnabled;
                         var Mess = isEnabled ? "禁用" : "启用";
                         args.Player.SendSuccessMessage($"玩家 [{args.Player.Name}] 已[c/92C5EC:{Mess}]消耗模式");
-                        AutoFish.Config.Write();
-                        return;
-                    }
-
-                    if (args.Parameters[0].ToLower() == "buff")
-                    {
-                        var isEnabled = AutoFish.Config.Buff;
-                        AutoFish.Config.Buff = !isEnabled;
-                        var Mess = isEnabled ? "禁用" : "启用";
-                        args.Player.SendSuccessMessage($"玩家 [{args.Player.Name}] 已[c/92C5EC:{Mess}]自动钓鱼BUFF");
                         AutoFish.Config.Write();
                         return;
                     }
@@ -218,6 +232,32 @@ namespace AutoFish
                                 break;
                             }
 
+                        case "+":
+                            {
+                                if (AutoFish.Config.DoorItems.Contains(item.type))
+                                {
+                                    args.Player.SendErrorMessage("物品 [c/92C5EC:{0}] 已在额外渔获表中!", item.Name);
+                                    return;
+                                }
+                                AutoFish.Config.DoorItems.Add(item.type);
+                                AutoFish.Config.Write();
+                                args.Player.SendSuccessMessage("已成功将物品添加额外渔获表: [c/92C5EC:{0}]!", item.Name);
+                                break;
+                            }
+
+                        case "-":
+                            {
+                                if (!AutoFish.Config.DoorItems.Contains(item.type))
+                                {
+                                    args.Player.SendErrorMessage("物品 {0} 不在额外渔获中!", item.Name);
+                                    return;
+                                }
+                                AutoFish.Config.DoorItems.Remove(item.type);
+                                AutoFish.Config.Write();
+                                args.Player.SendSuccessMessage("已成功从额外渔获移出物品: [c/92C5EC:{0}]!", item.Name);
+                                break;
+                            }
+
                         case "set":
                             {
                                 if (int.TryParse(args.Parameters[1], out var num))
@@ -225,6 +265,17 @@ namespace AutoFish
                                     AutoFish.Config.BaitStack = num;
                                     AutoFish.Config.Write();
                                     args.Player.SendSuccessMessage("已成功将物品数量要求设置为: [c/92C5EC:{0}] 个!", num);
+                                }
+                                break;
+                            }
+
+                        case "duo":
+                            {
+                                if (int.TryParse(args.Parameters[1], out var num))
+                                {
+                                    AutoFish.Config.HookMax = num;
+                                    AutoFish.Config.Write();
+                                    args.Player.SendSuccessMessage("已成功将多钩数量上限设置为: [c/92C5EC:{0}] 个!", num);
                                 }
                                 break;
                             }
