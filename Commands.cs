@@ -118,7 +118,7 @@ namespace AutoFish
                 //检测到血月
                 if(Main.bloodMoon)
                 {
-                    args.Player.SendMessage($"当前为[c/F25055:血月]无法钓上怪物，可[c/46C4D4:关闭]插件：[c/F3F292:/ar off]", 243, 181, 145);
+                    args.Player.SendMessage($"当前为[c/F25055:血月]无法钓上怪物，可[c/46C4D4:关闭]插件：[c/F3F292:/af off]", 243, 181, 145);
                 }
                 return;
             }
