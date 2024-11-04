@@ -54,7 +54,7 @@ public class AutoFish : TerrariaPlugin
     private static void ReloadConfig(ReloadEventArgs args)
     {
         LoadConfig();
-        args.Player.SendInfoMessage("[多线钓鱼]重新加载配置完毕。");
+        args.Player.SendInfoMessage("[自动钓鱼]重新加载配置完毕。");
     }
     private static void LoadConfig()
     {

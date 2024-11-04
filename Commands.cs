@@ -114,6 +114,11 @@ namespace AutoFish
                 {
                     args.Player.SendMessage($"自动钓鱼[c/46C4D4:剩余时长]：[c/F3F292:{Math.Floor(Minutes)}]分钟", 243, 181, 145);
                 }
+                //检测到血月
+                else if (Main.bloodMoon)
+                {
+                    args.Player.SendMessage($"当前为[c/F25055:血月]无法钓上怪物，可[c/46C4D4:关闭]插件：[c/F3F292:/ar off]", 243, 181, 145);
+                }
                 return;
             }
 
