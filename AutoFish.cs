@@ -301,7 +301,10 @@ public class AutoFish : TerrariaPlugin
     private void OnPlayerUpdate(object? sender, GetDataHandlers.PlayerUpdateEventArgs e)
     {
         var plr = e.Player;
-        if (!Config.Enabled || !Config.ConMod || e == null || plr == null || !plr.IsLoggedIn || !plr.Active || !plr.HasPermission("autofish"))
+        if (!Config.Enabled || !Config.ConMod || e == null ||
+            plr == null || !plr.IsLoggedIn || !plr.Active ||
+            !plr.HasPermission("autofish") ||
+            plr.HasPermission("autofish.admin"))
         {
             return;
         }
