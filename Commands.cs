@@ -90,7 +90,6 @@ namespace AutoFish
 
             //消费模式下的剩余时间记录
             var Minutes = AutoFish.Config.timer - (DateTime.Now - data.LogTime).TotalMinutes;
-            FormattableString minutes = $"{Minutes:F0}";
 
             if (args.Parameters.Count == 0)
             {
@@ -104,7 +103,7 @@ namespace AutoFish
                 //开启了消费模式
                 else if (AutoFish.Config.ConMod)
                 {
-                    args.Player.SendMessage($"自动钓鱼[c/46C4D4:剩余时长]：[c/F3F292:{minutes}]分钟", 243, 181, 145);
+                    args.Player.SendMessage($"自动钓鱼[c/46C4D4:剩余时长]：[c/F3F292:{Math.Floor(Minutes)}]分钟", 243, 181, 145);
                 }
                 return;
             }

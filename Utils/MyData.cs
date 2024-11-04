@@ -20,15 +20,11 @@ public class MyData
         //记录时间
         public DateTime LogTime { get; set; }
 
-        //玩家拥有的鱼饵数量
-        public Dictionary<int, int> Bait { get; set; } = new Dictionary<int, int>();
-
-        public ItemData(string name = "", bool enabled = true, bool auto = true, Dictionary<int, int> DelItem = null!)
+        public ItemData(string name = "", bool enabled = true, bool mod = true)
         {
             Name = name ?? "";
             Enabled = enabled;
-            Mod = auto;
-            Bait = DelItem;
+            Mod = mod;
         }
     }
     #endregion
