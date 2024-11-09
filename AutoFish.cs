@@ -15,7 +15,7 @@ public class AutoFish : TerrariaPlugin
     #region 插件信息
     public override string Name => "自动钓鱼";
     public override string Author => "羽学 少司命";
-    public override Version Version => new Version(1, 3, 0);
+    public override Version Version => new Version(1, 3, 1);
     public override string Description => "涡轮增压不蒸鸭";
     #endregion
 
@@ -161,7 +161,7 @@ public class AutoFish : TerrariaPlugin
                         if (inv.stack > 0)
                         {
                             //当前物品数量为1则移除（避免选中的饵不会主动消失 变成无限饵 或 卡住线程）
-                            if (plr.TPlayer.inventory[i].stack == 1)
+                            if (inv.stack == 1)
                             {
                                 inv.TurnToAir();
                             }
@@ -186,6 +186,14 @@ public class AutoFish : TerrariaPlugin
             {
                 // 执行钓鱼检查
                 args.Projectile.FishingCheck();
+
+                //随机物品
+                if (Config.Random)
+                {
+                    var rm = new Random();
+                    var id = rm.Next(1, 5455);
+                    args.Projectile.localAI[1] = id;
+                }
 
                 // 将localAI[1]的值复制到ai[1]
                 args.Projectile.ai[1] = args.Projectile.localAI[1];
@@ -247,10 +255,7 @@ public class AutoFish : TerrariaPlugin
                 // 检查是否上钩
                 if (Tools.BobbersActive(e.Owner))
                 {
-                    //构建新弹幕
-                    var index = SpawnProjectile.NewProjectile(Main.projectile[e.Index].GetProjectileSource_FromThis(),
-                        e.Position, e.Velocity, e.Type, (int)e.Damage, e.Knockback, e.Owner, 0, 0, 0, -1, guid);
-
+                    var index = SpawnProjectile.NewProjectile(Main.projectile[e.Index].GetProjectileSource_FromThis(), e.Position, e.Velocity, e.Type, e.Damage, e.Knockback, e.Owner, 0, 0, 0, -1, guid);
                     plr.SendData(PacketTypes.ProjectileNew, "", index);
 
                     // 更新多线计数
@@ -263,13 +268,13 @@ public class AutoFish : TerrariaPlugin
         {
             if (list.Enabled)
             {
+                // 检查是否上钩
                 if (Tools.BobbersActive(e.Owner))
                 {
-                    var index = SpawnProjectile.NewProjectile(Main.projectile[e.Index].GetProjectileSource_FromThis(),
-                        e.Position, e.Velocity, e.Type, (int)e.Damage, e.Knockback, e.Owner, 0, 0, 0, -1, guid);
-
+                    var index = SpawnProjectile.NewProjectile(Main.projectile[e.Index].GetProjectileSource_FromThis(), e.Position, e.Velocity, e.Type, e.Damage, e.Knockback, e.Owner, 0, 0, 0, -1, guid);
                     plr.SendData(PacketTypes.ProjectileNew, "", index);
 
+                    // 更新多线计数
                     HookCount++;
                 }
             }
@@ -282,14 +287,14 @@ public class AutoFish : TerrariaPlugin
     {
         var plr = e.Player;
 
-        if (plr == null || !plr.Active || !plr.IsLoggedIn || !Config.Enabled  || !plr.HasPermission("autofish"))
+        if (plr == null || !plr.Active || !plr.IsLoggedIn || !Config.Enabled || !plr.HasPermission("autofish"))
         {
             return;
         }
 
         // 从数据表中获取与玩家名字匹配的配置项
         var list = Data.Items.FirstOrDefault(x => x.Name == plr.Name);
-        if (list == null || !list.Buff )
+        if (list == null || !list.Buff)
         {
             return;
         }

@@ -249,6 +249,7 @@ namespace AutoFish.Utils
                 {
                     projectile.timeLeft = 120;
                 }
+
                 if (Type == 680 && Main.player[projectile.owner].setSquireT2)
                 {
                     projectile.penetrate = 7;
@@ -270,6 +271,17 @@ namespace AutoFish.Utils
             {
                 projectile.timeLeft = timeLeft;
             }
+
+            //排除单体召唤物：星尘守卫、星尘龙、沙漠虎、阿比盖尔的弹幕
+            if (AutoFish.Config.DisableProjectile.Contains(Type))
+            {
+                timeLeft = 0;
+                projectile.frame = 0;
+                projectile.timeLeft = -1;
+                projectile.active = false;
+                return 0;
+            }
+
             projectile.miscText = uuid;
             return num;
         }

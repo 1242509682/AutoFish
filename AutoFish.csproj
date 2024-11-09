@@ -7,6 +7,7 @@
     </PropertyGroup>
     <ItemGroup>
       <Compile Remove="C:\Users\羽学\.nuget\packages\tshock\5.2.0\contentFiles\any\net6.0\Database.cs" />
+      <Compile Remove="C:\Users\羽学\.nuget\packages\tshock\5.2.0\contentFiles\any\net6.0\TrashItemData.cs" />
     </ItemGroup>
     <ItemGroup>
       <PackageReference Include="TShock" Version="5.*" />
