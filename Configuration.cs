@@ -34,7 +34,7 @@ namespace AutoFish
         public int BaitStack { get; set; } = 10;
 
         [JsonProperty("奖励时长", Order = -3)]
-        public int timer { get; set; } = 24;
+        public int timer { get; set; } = 12;
 
         [JsonProperty("消耗物品", Order = -2)]
         public List<int> BaitType { get; set; } = new();
